@@ -22,9 +22,6 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
 
     return "OK"
 
-# with db.engine.begin() as connection:
-#         result = connection.execute(sqlalchemy.text(sql_to_execute))
-        
 @router.post("/plan")
 def get_bottle_plan():
     """
