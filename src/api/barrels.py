@@ -53,10 +53,11 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         #If the inventory from db table is less than 10, plan to purchase 1
         if green_potions_num is not None and green_potions_num < 10:
             green_barrel_purchase = 1
-
-        for Barrel in wholesale_catalog:
-            if wholesale_catalog[Barrel].potion_type == [0, 100, 0,0 ]:
-                sku = wholesale_catalog[Barrel].sku 
+    i = 0
+    for Barrel in wholesale_catalog:
+        if wholesale_catalog[i].potion_type == [0, 100, 0,0 ]:
+            sku = wholesale_catalog[i].sku 
+        i += 1
     return [
         {
             "sku": sku,
