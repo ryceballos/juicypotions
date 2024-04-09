@@ -51,7 +51,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             "SELECT num_green_potions FROM global_inventory")).scalar()
 
         #If the inventory from db table is less than 10, plan to purchase 1
-        if green_potions_num is not None and green_potions_num < 10:
+        if green_potions_num < 10:
             green_barrel_purchase = 1
     i = 0
     for Barrel in wholesale_catalog:
