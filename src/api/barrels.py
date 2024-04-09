@@ -47,18 +47,6 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     print(wholesale_catalog)
     green_barrel_purchase = 0
     with db.engine.begin() as connection:
-        #Mix availible green ml
-        # green_ml_quantity = connection.execute(sqlalchemy.text(
-        #     "SELECT num_green_ml FROM global_inventory")).scalar()
-        
-        # if green_ml_quantity is not None and green_ml_quantity >= 100:
-        #     new_potions = green_ml_quantity // 100
-            
-        #     connection.execute(sqlalchemy.text(
-        #         "UPDATE global_inventory SET num_green_potions = num_green_potions + :potions, num_green_ml - (:potions * 100)"),
-        #         {"potions": new_potions}
-        #     )
-
         green_potions_num = connection.execute(sqlalchemy.text(
             "SELECT num_green_potions FROM global_inventory")).scalar()
 

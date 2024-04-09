@@ -16,6 +16,8 @@ def get_catalog():
 
         if green_quantity is None:
             green_quantity = 0
+        else:
+            green_quantity = 1
 
         return [
                 {
@@ -23,6 +25,6 @@ def get_catalog():
                     "name": "Green potion",
                     "quantity": green_quantity,
                     "price": 50,
-                    "potion_type": [0, 0, 100, 0],
+                    "potion_type": [0, 100, 0, 0],
                 }
             ]
