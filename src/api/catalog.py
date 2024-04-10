@@ -14,8 +14,8 @@ def get_catalog():
         green_quantity = connection.execute(sqlalchemy.text(
             "SELECT num_green_potions FROM global_inventory")).scalar()
 
-        if green_quantity is None:
-            green_quantity = 0
+        if green_quantity == 0:
+            return []
         else:
             green_quantity = 1
 
