@@ -53,6 +53,8 @@ def get_bottle_plan():
         while curr_green_ml >= 100:
             ml_to_bottle += 1
             curr_green_ml -= 100
+    if ml_to_bottle == 0:
+        return[]
     return [
             {
                 "potion_type": [0, 100, 0, 0],
