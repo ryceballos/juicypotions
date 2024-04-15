@@ -123,23 +123,25 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
 
     total_potions_bought = 0
     total_gold_paid = 0
-    for cart_id, inner_dict in cart_ids.items():
-        for sku, quantity in inner_dict.items():
-            if sku == 'Red_Potion':
-                curr_red_potions -= 1
-                total_potions_bought += 1
-                curr_gold += 50
-                total_gold_paid += 50
-            if sku == 'Green_Potion':
-                curr_green_potions -= 1
-                total_potions_bought += 1
-                curr_gold += 50
-                total_gold_paid += 50
-            if sku == 'Blue_Potion':
-                curr_blue_potions -= 1
-                total_potions_bought += 1
-                curr_gold += 50
-                total_gold_paid += 50
+    for Cart_id, inner_dict in cart_ids.items():
+        if Cart_id == cart_id:
+            for sku, quantity in inner_dict.items():
+                if sku == 'Red_Potion':
+                    curr_red_potions -= 1
+                    total_potions_bought += 1
+                    curr_gold += 50
+                    total_gold_paid += 50
+                if sku == 'Green_Potion':
+                    curr_green_potions -= 1
+                    total_potions_bought += 1
+                    curr_gold += 50
+                    total_gold_paid += 50
+                if sku == 'Blue_Potion':
+                    curr_blue_potions -= 1
+                    total_potions_bought += 1
+                    curr_gold += 50
+                    total_gold_paid += 50
+    with db.engine.begin() as connection:
         connection.execute(sqlalchemy.text(
             f"UPDATE global_inventory SET gold = {curr_gold}, num_green_potions = {curr_green_potions}"))
         connection.execute(sqlalchemy.text(
