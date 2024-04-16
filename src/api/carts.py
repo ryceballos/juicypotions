@@ -111,6 +111,7 @@ class CartCheckout(BaseModel):
 @router.post("/{cart_id}/checkout")
 def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
+    print(cart_checkout)
     with db.engine.begin() as connection:
         curr_green_potions = connection.execute(sqlalchemy.text(
             "SELECT num_green_potions FROM global_inventory")).scalar()
