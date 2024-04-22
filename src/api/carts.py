@@ -113,12 +113,9 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
     print(cart_checkout)
     with db.engine.begin() as connection:
-        curr_green_potions = connection.execute(sqlalchemy.text(
-            "SELECT num_green_potions FROM global_inventory")).scalar()
-        curr_red_potions = connection.execute(sqlalchemy.text(
-            "SELECT num_red_potions FROM global_inventory")).scalar()
-        curr_blue_potions = connection.execute(sqlalchemy.text(
-            "SELECT num_blue_potions FROM global_inventory")).scalar()
+        curr_green_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Green Potion'")).scalar()
+        curr_red_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Red Potion'")).scalar()
+        curr_blue_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Blue Potion'")).scalar()
         curr_gold = connection.execute(sqlalchemy.text(
             "SELECT gold FROM global_inventory")).scalar()
 
@@ -144,7 +141,11 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
                     total_gold_paid += 50
     with db.engine.begin() as connection:
         connection.execute(sqlalchemy.text(
-            f"UPDATE global_inventory SET gold = {curr_gold}, num_green_potions = {curr_green_potions}"))
+            f"UPDATE global_inventory SET gold = {curr_gold}"))
         connection.execute(sqlalchemy.text(
-            f"UPDATE global_inventory SET num_red_potions = {curr_red_potions}, num_blue_potions = {curr_blue_potions}"))
+            f"UPDATE potions SET quantity = {curr_red_potions} WHERE name = 'Red Potion'"))
+        connection.execute(sqlalchemy.text(
+            f"UPDATE potions SET quantity = {curr_green_potions} WHERE name = 'Green Potion'"))
+        connection.execute(sqlalchemy.text(
+            f"UPDATE potions SET quantity = {curr_blue_potions} WHERE name = 'Blue Potion'"))
     return {"total_potions_bought": total_potions_bought, "total_gold_paid": total_gold_paid}

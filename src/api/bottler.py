@@ -39,11 +39,11 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
 
     with db.engine.begin() as connection:
         curr_green_ml = connection.execute(sqlalchemy.text("SELECT num_green_ml FROM global_inventory")).scalar()
-        curr_green_potions = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory")).scalar()
+        curr_green_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Green Potion'")).scalar()
         curr_red_ml = connection.execute(sqlalchemy.text("SELECT num_red_ml FROM global_inventory")).scalar()
-        curr_red_potions = connection.execute(sqlalchemy.text("SELECT num_red_potions FROM global_inventory")).scalar()
+        curr_red_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Red Potion'")).scalar()
         curr_blue_ml = connection.execute(sqlalchemy.text("SELECT num_blue_ml FROM global_inventory")).scalar()
-        curr_blue_potions = connection.execute(sqlalchemy.text("SELECT num_blue_potions FROM global_inventory")).scalar()
+        curr_blue_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Blue Potion'")).scalar()
         curr_green_ml -= green_ml_used
         curr_green_potions += new_green_potions
         curr_red_ml -= red_ml_used
@@ -51,11 +51,13 @@ def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int
         curr_blue_ml -= blue_ml_used
         curr_blue_potions += new_blue_potions
         connection.execute(sqlalchemy.text(
-                f"UPDATE global_inventory SET num_green_ml = {curr_green_ml}, num_green_potions = {curr_green_potions}"))
+                f"UPDATE global_inventory SET num_green_ml = {curr_green_ml}, num_red_ml = {curr_red_ml}, num_blue_ml = {curr_blue_ml}"))
         connection.execute(sqlalchemy.text(
-                f"UPDATE global_inventory SET num_red_ml = {curr_red_ml}, num_red_potions = {curr_red_potions}"))
+                f"UPDATE potions SET quantity = {curr_red_potions} WHERE name = 'Red Potion'"))
         connection.execute(sqlalchemy.text(
-                f"UPDATE global_inventory SET num_blue_ml = {curr_blue_ml}, num_blue_potions = {curr_blue_potions}"))
+                f"UPDATE potions SET quantity = {curr_green_potions} WHERE name = 'Green Potion'"))
+        connection.execute(sqlalchemy.text(
+                f"UPDATE potions SET quantity = {curr_blue_potions} WHERE name = 'Blue Potion'"))
     return "OK"
 
 @router.post("/plan")
