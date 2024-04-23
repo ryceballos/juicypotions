@@ -23,34 +23,14 @@ class Barrel(BaseModel):
 @router.post("/deliver/{order_id}")
 def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     """Gold and ML"""
-    new_green_ml = 0
-    new_red_ml = 0
-    new_blue_ml = 0
-    gold_spent = 0
-    with db.engine.begin() as connection:
-        curr_green_ml = connection.execute(sqlalchemy.text("SELECT num_green_ml FROM global_inventory")).scalar()
-        curr_red_ml = connection.execute(sqlalchemy.text("SELECT num_red_ml FROM global_inventory")).scalar()
-        curr_blue_ml = connection.execute(sqlalchemy.text("SELECT num_blue_ml FROM global_inventory")).scalar()
-        curr_gold = connection.execute(sqlalchemy.text("SELECT gold FROM global_inventory")).scalar()
 
     for barrel in barrels_delivered:
-        gold_spent += (barrel.quantity * barrel.price)
-        if barrel.potion_type == [1, 0, 0, 0]:
-            new_red_ml += (barrel.quantity * barrel.ml_per_barrel)
-        elif barrel.potion_type == [0, 1, 0, 0]:
-            new_green_ml += (barrel.quantity * barrel.ml_per_barrel)
-        elif barrel.potion_type == [0, 0, 1, 0]:
-            new_blue_ml += (barrel.quantity * barrel.ml_per_barrel)
-
-    curr_green_ml += new_green_ml
-    curr_red_ml += new_red_ml
-    curr_blue_ml += new_blue_ml
-    curr_gold -= gold_spent
-    with db.engine.begin() as connection:
-        connection.execute(sqlalchemy.text(
-            f"UPDATE global_inventory SET gold = {curr_gold}, num_green_ml = {curr_green_ml}"))
-        connection.execute(sqlalchemy.text(
-            f"UPDATE global_inventory SET num_red_ml = {curr_red_ml}, num_blue_ml = {curr_blue_ml}"))
+        with db.engine.begin() as connection:
+            connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = global_inventory.gold - :gold_spent"),
+                               [{"gold_spent": barrel.quantity * barrel.price}])
+            connection.execute(sqlalchemy.text(
+                "UPDATE global_inventory SET num_red_ml = global_inventory.num_red_ml + :red, num_green_ml = global_inventory.num_green_ml + :green, num_blue_ml = global_inventory.num_blue_ml + :blue"),
+                               [{"red": barrel.potion_type[0] * (barrel.quantity * barrel.ml_per_barrel), "green": barrel.potion_type[1] * (barrel.quantity * barrel.ml_per_barrel), "blue": barrel.potion_type[2] * (barrel.quantity * barrel.ml_per_barrel)}])
 
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
     return "OK"
@@ -247,4 +227,3 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
 #                     })
 
 #     return purchase_plan
-

@@ -14,8 +14,6 @@ router = APIRouter(
 @router.get("/audit")
 def get_inventory():
     """ """
-    total_potions = 0
-    total_ml = 0
     with db.engine.begin() as connection:
         total_potions = connection.execute(sqlalchemy.text(
             "SELECT SUM(quantity) FROM potions")).scalar()

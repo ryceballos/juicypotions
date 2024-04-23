@@ -12,10 +12,10 @@ def get_catalog():
     catalog = []
     with db.engine.begin() as connection:
         potions = connection.execute(sqlalchemy.text("SELECT * FROM potions"))
-        for SKU, name, red, green, blue, dark, quantity, price in potions:
+        for sku, name, red, green, blue, dark, quantity, price in potions:
             if (quantity != 0):
                 catalog.append({
-                    "sku": SKU,
+                    "sku": sku,
                     "name": name,
                     "quantity": quantity,
                     "price": price,

@@ -4,7 +4,6 @@ from src.api import auth
 from enum import Enum
 import sqlalchemy
 from src import database as db
-from typing import Dict
 
 router = APIRouter(
     prefix="/carts",
@@ -84,13 +83,11 @@ def post_visits(visit_id: int, customers: list[Customer]):
 
     return "OK"
 
-cart_ids: Dict[int, Dict[str, int]] = {}
-
 @router.post("/")
 def create_cart(new_cart: Customer):
     """ Create a cart for a new customer """
-    cart_id = len(cart_ids) + 1
-    cart_ids[cart_id] = {}
+    with db.engine.begin() as connection:
+        cart_id = connection.execute(sqlalchemy.text("INSERT INTO carts DEFAULT VALUES RETURNING cart_id")).scalar()
     return {"cart_id": cart_id}
 
 
@@ -101,7 +98,9 @@ class CartItem(BaseModel):
 @router.post("/{cart_id}/items/{item_sku}")
 def set_item_quantity(cart_id: int, item_sku: str, cart_item: CartItem):
     """ """
-    cart_ids[cart_id][item_sku] = cart_item.quantity
+    with db.engine.begin() as connection:
+        connection.execute(sqlalchemy.text(
+            "INSERT INTO cart_items (cart_id, sku, quantity) VALUES( :cart_id, :sku, :quantity)"), [{"cart_id": cart_id, "sku": item_sku, "quantity": cart_item.quantity}])
     return "OK"
 
 
@@ -112,40 +111,16 @@ class CartCheckout(BaseModel):
 def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
     print(cart_checkout)
+    total_gold_gained = 0
+    total_potions_sold = 0
     with db.engine.begin() as connection:
-        curr_green_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Green Potion'")).scalar()
-        curr_red_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Red Potion'")).scalar()
-        curr_blue_potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions WHERE name = 'Blue Potion'")).scalar()
-        curr_gold = connection.execute(sqlalchemy.text(
-            "SELECT gold FROM global_inventory")).scalar()
-
-    total_potions_bought = 0
-    total_gold_paid = 0
-    for Cart_id, inner_dict in cart_ids.items():
-        if Cart_id == cart_id:
-            for sku, quantity in inner_dict.items():
-                if sku == 'Red_Potion':
-                    curr_red_potions -= quantity
-                    total_potions_bought += quantity
-                    curr_gold += (50 * quantity)
-                    total_gold_paid += (50 * quantity)
-                if sku == 'Green_Potion':
-                    curr_green_potions -= quantity
-                    total_potions_bought += quantity
-                    curr_gold += (50 * quantity)
-                    total_gold_paid += (50 * quantity)
-                if sku == 'Blue_Potion':
-                    curr_blue_potions -= quantity
-                    total_potions_bought += quantity
-                    curr_gold += (50 * quantity)
-                    total_gold_paid += (50 * quantity)
-    with db.engine.begin() as connection:
-        connection.execute(sqlalchemy.text(
-            f"UPDATE global_inventory SET gold = {curr_gold}"))
-        connection.execute(sqlalchemy.text(
-            f"UPDATE potions SET quantity = {curr_red_potions} WHERE name = 'Red Potion'"))
-        connection.execute(sqlalchemy.text(
-            f"UPDATE potions SET quantity = {curr_green_potions} WHERE name = 'Green Potion'"))
-        connection.execute(sqlalchemy.text(
-            f"UPDATE potions SET quantity = {curr_blue_potions} WHERE name = 'Blue Potion'"))
-    return {"total_potions_bought": total_potions_bought, "total_gold_paid": total_gold_paid}
+        items = connection.execute(sqlalchemy.text("SELECT cart_id AS items_cart_id, sku, quantity FROM cart_items"))
+        for items_cart_id, sku, quantity in items:
+            if (items_cart_id == cart_id):
+                connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = global_inventory.gold + :gold_gained"),
+                            [{"gold_gained": quantity * 50}])
+                total_gold_gained += (quantity * 50)
+                total_potions_sold += quantity
+                connection.execute(sqlalchemy.text("UPDATE potions SET quantity = potions.quantity - :quantity WHERE sku = :sku"),
+                            [{"quantity": quantity, "sku": sku}])
+    return {"total_potions_bought": total_potions_sold, "total_gold_paid": total_gold_gained}
