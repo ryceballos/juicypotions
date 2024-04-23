@@ -17,11 +17,12 @@ def get_inventory():
     total_potions = 0
     total_ml = 0
     with db.engine.begin() as connection:
-        potions = connection.execute(sqlalchemy.text("SELECT quantity FROM potions"))
-        total_potions = sum(quantity[0] for quantity in potions)
-        ml = connection.execute(sqlalchemy.text("SELECT num_green_ml, num_red_ml, num_blue_ml FROM global_inventory"))
-        total_ml = sum(ml.fetchone())
-        curr_gold = connection.execute(sqlalchemy.text("SELECT gold FROM global_inventory")).scalar()
+        total_potions = connection.execute(sqlalchemy.text(
+            "SELECT SUM(quantity) FROM potions")).scalar()
+        total_ml = connection.execute(sqlalchemy.text(
+            "SELECT SUM(num_green_ml + num_red_ml + num_blue_ml) FROM global_inventory")).scalar()
+        curr_gold = connection.execute(sqlalchemy.text(
+            "SELECT gold FROM global_inventory")).scalar()
     return {"number_of_potions": total_potions, "ml_in_barrels": total_ml, "gold": curr_gold}
 
 # Gets called once a day
@@ -50,21 +51,3 @@ def deliver_capacity_plan(capacity_purchase : CapacityPurchase, order_id: int):
     """
 
     return "OK"
-
-
-
-# def get_inventory():
-#     """ """
-#     total_potions = 0
-#     total_ml = 0
-#     with db.engine.begin() as connection:
-#         curr_green_ml = connection.execute(sqlalchemy.text("SELECT num_green_ml FROM global_inventory")).scalar()
-#         curr_green_potions = connection.execute(sqlalchemy.text("SELECT num_green_potions FROM global_inventory")).scalar()
-#         curr_red_ml = connection.execute(sqlalchemy.text("SELECT num_red_ml FROM global_inventory")).scalar()
-#         curr_red_potions = connection.execute(sqlalchemy.text("SELECT num_red_potions FROM global_inventory")).scalar()
-#         curr_blue_ml = connection.execute(sqlalchemy.text("SELECT num_blue_ml FROM global_inventory")).scalar()
-#         curr_blue_potions = connection.execute(sqlalchemy.text("SELECT num_blue_potions FROM global_inventory")).scalar()
-#         curr_gold = connection.execute(sqlalchemy.text("SELECT gold FROM global_inventory")).scalar()
-#     total_potions = curr_green_potions + curr_red_potions + curr_blue_potions
-#     total_ml = curr_green_ml + curr_red_ml + curr_blue_ml
-#     return {"number_of_potions": total_potions, "ml_in_barrels": total_ml, "gold": curr_gold}
