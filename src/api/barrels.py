@@ -79,6 +79,8 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         selection_1 = 3
     else:
         purchase_blue_barrel = 0
+        selection_1 = 0
+
     selection_2 = selection_1
     # Randomly selects two potion types for which to buy (could also be one type)
     # 1 = R, 2 = G, 3 = B
