@@ -63,7 +63,7 @@ def get_bottle_plan():
                     curr_red_ml -= red
                     curr_green_ml -= green
                     curr_blue_ml -= blue
-            total_potions += 1
+                    total_potions += 1
 
     return bottle_plan
 
