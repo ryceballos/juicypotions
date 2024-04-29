@@ -64,7 +64,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             "SELECT num_blue_ml FROM global_inventory")).scalar()
 
     # Logic for Buying Barrels
-    seletion_1 = 0
+    selection_1 = 0
     if ((red_potions_num < 10) and (curr_red_ml < 1000)):
         purchase_red_barrel = 1
         selection_1 = 1
