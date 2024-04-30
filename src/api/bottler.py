@@ -51,7 +51,8 @@ def get_bottle_plan():
         curr_blue_ml = ml.blue_ml
         total_potions = connection.execute(sqlalchemy.text(
             "SELECT SUM(quantity) FROM potions")).scalar()
-        while(total_potions < (50 - 10)):
+        counter = 0
+        while((total_potions < (50 - 10)) and (counter < 50)):
             potions = connection.execute(sqlalchemy.text(
                 "SELECT red, green, blue FROM potions WHERE quantity < 8"))
             for red, green, blue in potions:
@@ -64,6 +65,8 @@ def get_bottle_plan():
                     curr_green_ml -= green
                     curr_blue_ml -= blue
                     total_potions += 1
+                else:
+                    counter += 1
 
     return bottle_plan
 
