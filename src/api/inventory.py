@@ -16,11 +16,11 @@ def get_inventory():
     """ """
     with db.engine.begin() as connection:
         total_potions = connection.execute(sqlalchemy.text(
-            "SELECT SUM(quantity) FROM potions")).scalar()
+            "SELECT SUM(quantity) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
         total_ml = connection.execute(sqlalchemy.text(
-            "SELECT SUM(num_green_ml + num_red_ml + num_blue_ml) FROM global_inventory")).scalar()
+            "SELECT SUM(quantity) FROM ledger WHERE sku LIKE '%ML'")).scalar()
         curr_gold = connection.execute(sqlalchemy.text(
-            "SELECT gold FROM global_inventory")).scalar()
+            "SELECT SUM(quantity) FROM ledger WHERE sku = 'gold' ")).scalar()
     return {"number_of_potions": total_potions, "ml_in_barrels": total_ml, "gold": curr_gold}
 
 # Gets called once a day

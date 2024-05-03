@@ -19,14 +19,17 @@ class PotionInventory(BaseModel):
 def post_deliver_bottles(potions_delivered: list[PotionInventory], order_id: int):
     """ """
     print(f"potions delievered: {potions_delivered} order_id: {order_id}")
-    for Potion in potions_delivered:
-        with db.engine.begin() as connection:
+    with db.engine.begin() as connection:
+        for Potion in potions_delivered:
+            item = connection.execute(sqlalchemy.text(
+                "SELECT sku FROM potions WHERE potions.red = :red AND potions.green = :green AND potions.blue = :blue AND potions.dark = :dark"),
+                               [{"red": Potion.potion_type[0], "green": Potion.potion_type[1], "blue": Potion.potion_type[2], "dark": Potion.potion_type[3]}]).scalar()
             connection.execute(sqlalchemy.text(
-                "UPDATE potions SET quantity = potions.quantity + :quantity WHERE potions.red = :red AND potions.green = :green AND potions.blue = :blue"),
-                               [{"quantity": Potion.quantity, "red": Potion.potion_type[0], "green": Potion.potion_type[1], "blue": Potion.potion_type[2]}])
+                "INSERT INTO ledger (sku, quantity) VALUES (:item, :quantity)"),
+                               [{"item": item, "quantity": Potion.quantity}])
             connection.execute(sqlalchemy.text(
-                "UPDATE global_inventory SET num_red_ml = global_inventory.num_red_ml - :red, num_green_ml = global_inventory.num_green_ml - :green, num_blue_ml = global_inventory.num_blue_ml - :blue"),
-                               [{"red": (Potion.quantity * Potion.potion_type[0]), "green": (Potion.quantity * Potion.potion_type[1]), "blue": (Potion.quantity * Potion.potion_type[2])}])
+                "INSERT INTO ledger (sku, quantity) VALUES (:red_ml, :red_quantity), (:green_ml, :green_quantity), (:blue_ml, :blue_quantity), (:dark_ml, :dark_quantity)"),
+                               [{"red_ml": 'RED_ML', "red_quantity": -1 * Potion.quantity * Potion.potion_type[0], "green_ml": 'GREEN_ML', "green_quantity": -1 * Potion.quantity * Potion.potion_type[1], "blue_ml": 'BLUE_ML', "blue_quantity": -1 * Potion.quantity * Potion.potion_type[2], "dark_ml": 'DARK_ML', "dark_quantity": -1 * Potion.quantity * Potion.potion_type[3]}])
     return "OK"
 
 @router.post("/plan")
@@ -41,34 +44,64 @@ def get_bottle_plan():
 
     # Initial logic: bottle all barrels into red potions.
 
-    
     bottle_plan = []
+    bottler_plan = []
     with db.engine.begin() as connection:
         ml = connection.execute(sqlalchemy.text(
-            "SELECT num_red_ml AS red_ml, num_green_ml AS green_ml, num_blue_ml AS blue_ml FROM global_inventory")).one()
-        curr_red_ml = ml.red_ml
-        curr_green_ml = ml.green_ml
-        curr_blue_ml = ml.blue_ml
+            "SELECT sku, COALESCE(SUM(quantity), 0) AS total FROM ledger WHERE sku LIKE '%ML' GROUP BY sku"))
+        for sku, total in ml:
+            if 'red' in sku.lower():
+                curr_red_ml = total
+            elif 'green' in sku.lower():
+                curr_green_ml = total
+            elif 'blue' in sku.lower():
+                curr_blue_ml = total
+            elif 'dark' in sku.lower():
+                curr_dark_ml = total
         total_potions = connection.execute(sqlalchemy.text(
-            "SELECT SUM(quantity) FROM potions")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
+        caps = connection.execute(sqlalchemy.text(
+            "SELECT potion_cap, barrel_limit FROM capacities")).one()
+        potion_cap = caps.potion_cap
+        barrel_limit = caps.barrel_limit
         counter = 0
-        while((total_potions < (50 - 10)) and (counter < 50)):
-            potions = connection.execute(sqlalchemy.text(
-                "SELECT red, green, blue FROM potions WHERE quantity < 8"))
-            for red, green, blue in potions:
-                if (curr_red_ml >= red) and (curr_green_ml >= green) and (curr_blue_ml >= blue):
+        while((total_potions < (potion_cap - barrel_limit)) and (counter < potion_cap)):
+            potions = connection.execute(sqlalchemy.text("""
+                                                         SELECT potions.red, potions.green, potions.blue, potions.dark
+                                                         FROM potions
+                                                         LEFT JOIN ledger ON potions.sku = ledger.sku
+                                                         WHERE potions.sku LIKE '%POTION'
+                                                         GROUP BY potions.sku
+                                                         ORDER BY COALESCE(SUM(ledger.quantity), 0) ASC
+                                                         LIMIT :barrel_limit"""),
+                                         [{"barrel_limit": barrel_limit}])
+            for red, green, blue, dark in potions:
+                if (curr_red_ml >= red) and (curr_green_ml >= green) and (curr_blue_ml >= blue) and (curr_dark_ml >= dark):
                     bottle_plan.append({
-                        "potion_type": [red, green, blue, 0],
+                        "potion_type": [red, green, blue, dark],
                         "quantity": 1,
                     })
                     curr_red_ml -= red
                     curr_green_ml -= green
                     curr_blue_ml -= blue
+                    curr_dark_ml -= dark
                     total_potions += 1
                 else:
                     counter += 1
-
-    return bottle_plan
+        potion_type_counts = {}
+        for entry in bottle_plan:
+            potion_type = tuple(entry["potion_type"])
+            quantity = entry["quantity"]
+            if potion_type in potion_type_counts:
+                potion_type_counts[potion_type] += quantity
+            else:
+                potion_type_counts[potion_type] = quantity
+        for potion_type, count in potion_type_counts.items():
+            bottler_plan.append({
+                "potion_type": list(potion_type),
+                "quantity": count
+            })
+    return bottler_plan
 
 if __name__ == "__main__":
     print(get_bottle_plan())

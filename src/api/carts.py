@@ -100,7 +100,8 @@ def set_item_quantity(cart_id: int, item_sku: str, cart_item: CartItem):
     """ """
     with db.engine.begin() as connection:
         connection.execute(sqlalchemy.text(
-            "INSERT INTO cart_items (cart_id, sku, quantity) VALUES( :cart_id, :sku, :quantity)"), [{"cart_id": cart_id, "sku": item_sku, "quantity": cart_item.quantity}])
+            "INSERT INTO cart_items (cart_id, sku, quantity) VALUES( :cart_id, :sku, :quantity)"),
+                        [{"cart_id": cart_id, "sku": item_sku, "quantity": cart_item.quantity}])
     return "OK"
 
 
@@ -117,10 +118,9 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
         items = connection.execute(sqlalchemy.text("SELECT cart_id AS items_cart_id, sku, quantity FROM cart_items"))
         for items_cart_id, sku, quantity in items:
             if (items_cart_id == cart_id):
-                connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = global_inventory.gold + :gold_gained"),
-                            [{"gold_gained": quantity * 50}])
                 total_gold_gained += (quantity * 50)
                 total_potions_sold += quantity
-                connection.execute(sqlalchemy.text("UPDATE potions SET quantity = potions.quantity - :quantity WHERE sku = :sku"),
-                            [{"quantity": quantity, "sku": sku}])
+                connection.execute(sqlalchemy.text(
+                    "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_gained), (:sku, :quantity)"),
+                            [{"gold": 'gold', "gold_gained": quantity * 50, "sku": sku, "quantity": -1 * quantity}])
     return {"total_potions_bought": total_potions_sold, "total_gold_paid": total_gold_gained}

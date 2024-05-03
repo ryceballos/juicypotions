@@ -26,12 +26,9 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
 
     for barrel in barrels_delivered:
         with db.engine.begin() as connection:
-            connection.execute(sqlalchemy.text("UPDATE global_inventory SET gold = global_inventory.gold - :gold_spent"),
-                               [{"gold_spent": barrel.quantity * barrel.price}])
             connection.execute(sqlalchemy.text(
-                "UPDATE global_inventory SET num_red_ml = global_inventory.num_red_ml + :red, num_green_ml = global_inventory.num_green_ml + :green, num_blue_ml = global_inventory.num_blue_ml + :blue"),
-                               [{"red": barrel.potion_type[0] * (barrel.quantity * barrel.ml_per_barrel), "green": barrel.potion_type[1] * (barrel.quantity * barrel.ml_per_barrel), "blue": barrel.potion_type[2] * (barrel.quantity * barrel.ml_per_barrel)}])
-
+                "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_spent), (:red_ml, :red_quantity), (:green_ml, :green_quantity), (:blue_ml, :blue_quantity), (:dark_ml, :dark_quantity)"),
+                        [{"gold": 'gold', "gold_spent": -1 * barrel.quantity * barrel.price, "red_ml": 'RED_ML', "red_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[0], "green_ml": 'GREEN_ML', "green_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[1], "blue_ml": 'BLUE_ML', "blue_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[2], "dark_ml": 'DARK_ML', "dark_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[3]}])
     print(f"barrels delievered: {barrels_delivered} order_id: {order_id}")
     return "OK"
 
@@ -45,8 +42,12 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     green_potions_num = 0
     blue_potions_num = 0
     with db.engine.begin() as connection:
-        potions = connection.execute(sqlalchemy.text(
-            "SELECT red, green, blue, quantity FROM potions"))
+        potions = connection.execute(sqlalchemy.text("""
+                                                     SELECT potions.red, potions.green, potions.blue, COALESCE(SUM(ledger.quantity), 0) AS total
+                                                     FROM potions
+                                                     LEFT JOIN ledger ON potions.sku = ledger.sku
+                                                     WHERE potions.sku LIKE '%POTION'
+                                                     GROUP BY potions.sku"""))
         for red, green, blue, quantity in potions:
             if (red > 0):
                 red_potions_num += quantity
@@ -55,13 +56,15 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
             if (blue > 0):
                 blue_potions_num += quantity
         curr_gold = connection.execute(sqlalchemy.text(
-            "SELECT gold FROM global_inventory")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'gold' ")).scalar()
         curr_green_ml = connection.execute(sqlalchemy.text(
-            "SELECT num_green_ml FROM global_inventory")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'GREEN_ML' ")).scalar()
         curr_red_ml = connection.execute(sqlalchemy.text(
-            "SELECT num_red_ml FROM global_inventory")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'RED_ML' ")).scalar()
         curr_blue_ml = connection.execute(sqlalchemy.text(
-            "SELECT num_blue_ml FROM global_inventory")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'BLUE_ML' ")).scalar()
+        # curr_dark_ml = connection.execute(sqlalchemy.text(
+        #     "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'DARK_ML' ")).scalar()
 
     # Logic for Buying Barrels
     selection_1 = 0
