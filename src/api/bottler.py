@@ -37,13 +37,9 @@ def get_bottle_plan():
     """
     Go from barrel to bottle.
     """
-
     # Each bottle has a quantity of what proportion of red, blue, and
     # green potion to add.
     # Expressed in integers from 1 to 100 that must sum up to 100.
-
-    # Initial logic: bottle all barrels into red potions.
-
     bottle_plan = []
     bottler_plan = []
     with db.engine.begin() as connection:
@@ -61,11 +57,11 @@ def get_bottle_plan():
         total_potions = connection.execute(sqlalchemy.text(
             "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
         caps = connection.execute(sqlalchemy.text(
-            "SELECT potion_cap, barrel_limit FROM capacities")).one()
+            "SELECT potion_cap, bottle_limit FROM capacities")).one()
         potion_cap = caps.potion_cap
-        barrel_limit = caps.barrel_limit
+        bottle_limit = caps.bottle_limit
         counter = 0
-        while((total_potions < (potion_cap - barrel_limit)) and (counter < potion_cap)):
+        while((total_potions < (potion_cap - bottle_limit)) and (counter < potion_cap)):
             potions = connection.execute(sqlalchemy.text("""
                                                          SELECT potions.red, potions.green, potions.blue, potions.dark
                                                          FROM potions
@@ -73,8 +69,8 @@ def get_bottle_plan():
                                                          WHERE potions.sku LIKE '%POTION'
                                                          GROUP BY potions.sku
                                                          ORDER BY COALESCE(SUM(ledger.quantity), 0) ASC
-                                                         LIMIT :barrel_limit"""),
-                                         [{"barrel_limit": barrel_limit}])
+                                                         LIMIT :bottle_limit"""),
+                                         [{"bottle_limit": bottle_limit}])
             for red, green, blue, dark in potions:
                 if (curr_red_ml >= red) and (curr_green_ml >= green) and (curr_blue_ml >= blue) and (curr_dark_ml >= dark):
                     bottle_plan.append({
@@ -101,6 +97,9 @@ def get_bottle_plan():
                 "potion_type": list(potion_type),
                 "quantity": count
             })
+        print("Bottle Plan:")
+        for step in bottler_plan:
+            print(step)
     return bottler_plan
 
 if __name__ == "__main__":
