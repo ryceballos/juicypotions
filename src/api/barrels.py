@@ -44,7 +44,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         ml = connection.execute(sqlalchemy.text(
             "SELECT sku, COALESCE(SUM(quantity), 0) AS total FROM ledger WHERE sku LIKE '%ML' GROUP BY sku"))
         curr_gold = connection.execute(sqlalchemy.text(
-            "SELECT SUM(quantity) FROM ledger WHERE sku = 'gold' ")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'gold' ")).scalar()
         for sku, total in ml:
             if 'red' in sku.lower():
                 curr_red_ml = total

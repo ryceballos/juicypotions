@@ -16,11 +16,11 @@ def get_inventory():
     """ """
     with db.engine.begin() as connection:
         total_potions = connection.execute(sqlalchemy.text(
-            "SELECT SUM(quantity) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
         total_ml = connection.execute(sqlalchemy.text(
-            "SELECT SUM(quantity) FROM ledger WHERE sku LIKE '%ML'")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%ML'")).scalar()
         curr_gold = connection.execute(sqlalchemy.text(
-            "SELECT SUM(quantity) FROM ledger WHERE sku = 'gold' ")).scalar()
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'gold' ")).scalar()
     return {"number_of_potions": total_potions, "ml_in_barrels": total_ml, "gold": curr_gold}
 
 # Gets called once a day
@@ -30,6 +30,13 @@ def get_capacity_plan():
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
+    with db.engine.begin() as connection:
+        total_potions = connection.execute(sqlalchemy.text(
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
+        total_ml = connection.execute(sqlalchemy.text(
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%ML'")).scalar()
+        curr_gold = connection.execute(sqlalchemy.text(
+            "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'gold' ")).scalar()
 
     return {
         "potion_capacity": 0,
