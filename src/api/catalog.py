@@ -12,7 +12,7 @@ def get_catalog():
     catalog = []
     with db.engine.begin() as connection:
         potions = connection.execute(sqlalchemy.text("""
-                                                     SELECT potions.*, COALESCE(SUM(ledger.quantity), 0) AS total
+                                                     SELECT potions.sku, potions.name, potions.red, potions.green, potions.blue, potions.dark, potions.price, COALESCE(SUM(ledger.quantity), 0) AS total
                                                      FROM potions
                                                      LEFT JOIN ledger ON potions.sku = ledger.sku
                                                      WHERE potions.sku LIKE '%POTION'
