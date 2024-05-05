@@ -57,22 +57,24 @@ def get_bottle_plan():
         total_potions = connection.execute(sqlalchemy.text(
             "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
         caps = connection.execute(sqlalchemy.text(
-            "SELECT potion_cap, bottle_limit FROM capacities")).one()
+            "SELECT potion_cap FROM capacities")).one()
         potion_cap = caps.potion_cap
-        bottle_limit = caps.bottle_limit
         counter = 0
-        while((total_potions < (potion_cap - bottle_limit)) and (counter < potion_cap)):
+        while((total_potions < potion_cap) and (counter < (potion_cap + 10))):
             potions = connection.execute(sqlalchemy.text("""
-                                                         SELECT potions.red, potions.green, potions.blue, potions.dark
-                                                         FROM potions
-                                                         LEFT JOIN ledger ON potions.sku = ledger.sku
-                                                         WHERE potions.sku LIKE '%POTION'
-                                                         GROUP BY potions.sku
-                                                         ORDER BY COALESCE(SUM(ledger.quantity), 0) ASC
-                                                         LIMIT :bottle_limit"""),
-                                         [{"bottle_limit": bottle_limit}])
+                                                        SELECT potions.red, potions.green, potions.blue, potions.dark
+                                                        FROM potions
+                                                        LEFT JOIN (
+                                                            SELECT sku, COALESCE(SUM(quantity), 0) AS total_quantity
+                                                            FROM ledger
+                                                            GROUP BY sku
+                                                        ) AS ledger_quantity ON potions.sku = ledger_quantity.sku
+                                                        WHERE potions.sku LIKE '%POTION' AND ledger_quantity.total_quantity < (potions.limit * :potion_cap)
+                                                        GROUP BY potions.sku
+                                                        ORDER BY COALESCE(SUM(ledger_quantity.total_quantity), 0) ASC"""),
+                                         [{"potion_cap": potion_cap}])
             for red, green, blue, dark in potions:
-                if (curr_red_ml >= red) and (curr_green_ml >= green) and (curr_blue_ml >= blue) and (curr_dark_ml >= dark):
+                if (curr_red_ml >= red) and (curr_green_ml >= green) and (curr_blue_ml >= blue) and (curr_dark_ml >= dark) and (total_potions + 1 < potion_cap):
                     bottle_plan.append({
                         "potion_type": [red, green, blue, dark],
                         "quantity": 1,
@@ -84,6 +86,7 @@ def get_bottle_plan():
                     total_potions += 1
                 else:
                     counter += 1
+            counter += 1
         potion_type_counts = {}
         for entry in bottle_plan:
             potion_type = tuple(entry["potion_type"])

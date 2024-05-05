@@ -86,6 +86,8 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                             curr_dark_ml += barrel.potion_type[3] * barrel.ml_per_barrel
                             curr_gold -= barrel.price
                             total_ml += barrel.ml_per_barrel
+                        else:
+                            counter += 200
                 else:
                     counter += 200
         potion_type_counts = {}

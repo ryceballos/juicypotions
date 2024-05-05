@@ -19,8 +19,11 @@ def reset():
     with db.engine.begin() as connection:
         connection.execute(sqlalchemy.text(
             "TRUNCATE ledger"))
-        connection.execute(sqlalchemy.text(
-            "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_initial), (:red_ml, :red_quantity), (:green_ml, :green_quantity), (:blue_ml, :blue_quantity), (:dark_ml, :dark_quantity)"),
-                    [{"gold": 'gold', "gold_initial": 100, "red_ml": 'RED_ML', "red_quantity": 0, "green_ml": 'GREEN_ML', "green_quantity": 0, "blue_ml": 'BLUE_ML', "blue_quantity": 0, "dark_ml": 'DARK_ML', "dark_quantity": 0}])
+        connection.execute(sqlalchemy.text("""
+                                            INSERT INTO ledger (sku, quantity)
+                                            VALUES ('gold', 100), ('RED_ML', 0), ('GREEN_ML', 0), ('BLUE_ML', 0),
+                                                ('DARK_ML', 0), ('RED_POTION', 0), ('GREEN_POTION', 0),
+                                                ('BLUE_POTION', 0), ('DARK_POTION', 0), ('YELLOW_POTION', 0),
+                                                ('PURPLE_POTION', 0), ('CYAN_POTION', 0), ('BLACKOUT_POTION', 0)"""))
     return "OK"
 
