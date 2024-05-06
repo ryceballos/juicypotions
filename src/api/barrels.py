@@ -77,7 +77,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                     for red, green, blue, dark, limit in mls:
                         if (curr_gold >= barrel.price) and ((curr_red_ml < (red * limit * ml_cap)) or (curr_green_ml < (green * limit * ml_cap)) or (curr_blue_ml < (blue * limit * ml_cap)) or (curr_dark_ml < (dark * limit * ml_cap))):
                             barrel_plan.append({
-                                "potion_type": [red, green, blue, dark],
+                                "sku": barrel.sku,
                                 "quantity": 1,
                             })
                             curr_red_ml += barrel.potion_type[0] * barrel.ml_per_barrel
@@ -90,21 +90,21 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
                             counter += 200
                 else:
                     counter += 200
-        potion_type_counts = {}
+        barrel_counts = {}
         for entry in barrel_plan:
-            potion_type = tuple(entry["potion_type"])
+            sku = entry["sku"]
             quantity = entry["quantity"]
-            if potion_type in potion_type_counts:
-                potion_type_counts[potion_type] += quantity
+            if sku in barrel_counts:
+                barrel_counts[sku] += quantity
             else:
-                potion_type_counts[potion_type] = quantity
-        for potion_type, count in potion_type_counts.items():
-            barrel_type = list(potion_type)
+                barrel_counts[sku] = quantity
+        for sku, count in barrel_counts.items():
+            barrel_type = sku
             for barrel in wholesale_catalog:
-                if (barrel_type == barrel.potion_type) and (count > barrel.quantity):
+                if (barrel_type == barrel.sku) and (count > barrel.quantity):
                     count = barrel.quantity
             purchase_plan.append({
-                "potion_type": list(potion_type),
+                "sku": sku,
                 "quantity": count
             })
         print("Purchase Plan:")
