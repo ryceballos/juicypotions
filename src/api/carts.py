@@ -53,7 +53,59 @@ def search_orders(
     Your results must be paginated, the max results you can return at any
     time is 5 total line items.
     """
+    
+    
+    # with db.engine.begin() as connection:
+    # # Initialize query
+    #     query = connection.execute(sqlalchemy.text("SELECT * FROM carts"))
 
+    # # Filter by customer name
+    # if customer_name:
+    #     query = query.filter(Customer.name.ilike(f'%{customer_name}%'))
+
+    # # Filter by potion sku
+    # if potion_sku:
+    #     query = query.filter(Cart.potion_sku.ilike(f'%{potion_sku}%'))
+
+    # # Sorting
+    # if sort_order == search_sort_order.desc:
+    #     order_func = desc
+    # else:
+    #     order_func = asc
+
+    # if sort_col == search_sort_options.customer_name:
+    #     query = query.order_by(order_func(Customer.name))
+    # elif sort_col == search_sort_options.item_sku:
+    #     query = query.order_by(order_func(Cart.potion_sku))
+    # elif sort_col == search_sort_options.line_item_total:
+    #     query = query.order_by(order_func(LineItem.total))
+    # elif sort_col == search_sort_options.timestamp:
+    #     query = query.order_by(order_func(LineItem.timestamp))
+
+    # # Pagination
+    # if search_page:
+    #     query = query.filter(LineItem.timestamp > search_page)
+
+    # # Fetch results
+    # line_items = query.limit(5).all()
+
+    # # Construct response
+    # response = {
+    #     "previous": "",
+    #     "next": "",
+    #     "results": [
+    #         {
+    #             "line_item_id": line_item.id,
+    #             "item_sku": line_item.potion_sku,
+    #             "customer_name": line_item.cart.customer.name,
+    #             "line_item_total": line_item.total,
+    #             "timestamp": line_item.timestamp.isoformat(),
+    #         }
+    #         for line_item in line_items
+    #     ],
+    # }
+
+    # return response
     return {
         "previous": "",
         "next": "",
@@ -81,13 +133,17 @@ def post_visits(visit_id: int, customers: list[Customer]):
     """
     print(customers)
 
+    
     return "OK"
 
 @router.post("/")
 def create_cart(new_cart: Customer):
     """ Create a cart for a new customer """
     with db.engine.begin() as connection:
-        cart_id = connection.execute(sqlalchemy.text("INSERT INTO carts DEFAULT VALUES RETURNING cart_id")).scalar()
+        customer_id = connection.execute(sqlalchemy.text("INSERT INTO customers (name, class, level) VALUES (:name, :class, :level) RETURNING customer_id"),
+                                         [{"name": new_cart.customer_name, "class": new_cart.character_class, "level": new_cart.level}]).scalar()
+        cart_id = connection.execute(sqlalchemy.text("INSERT INTO carts (customer_id) VALUES (:customer_id) RETURNING cart_id"),
+                                     [{"customer_id": customer_id}]).scalar()
     return {"cart_id": cart_id}
 
 
