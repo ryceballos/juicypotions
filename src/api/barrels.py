@@ -37,7 +37,7 @@ def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
 def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
     """ """
     print(wholesale_catalog)
-    
+    sorted_wholesale_catalog = sorted(wholesale_catalog, key=lambda x: x.ml_per_barrel, reverse=True)
     barrel_plan = []
     purchase_plan = []
     with db.engine.begin() as connection:
@@ -61,7 +61,7 @@ def get_wholesale_purchase_plan(wholesale_catalog: list[Barrel]):
         ml_cap = caps.ml_cap
         counter = 0
         while((total_ml < ml_cap) and (counter < ml_cap)):
-            for barrel in wholesale_catalog:
+            for barrel in sorted_wholesale_catalog:
                 if ((barrel.ml_per_barrel + total_ml) < ml_cap):
                     mls = connection.execute(sqlalchemy.text("""
                                                                 SELECT potions.red, potions.green, potions.blue, potions.dark, potions.limit
