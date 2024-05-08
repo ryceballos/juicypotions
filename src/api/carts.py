@@ -53,72 +53,123 @@ def search_orders(
     Your results must be paginated, the max results you can return at any
     time is 5 total line items.
     """
-    
-    
-    # with db.engine.begin() as connection:
-    # # Initialize query
-    #     query = connection.execute(sqlalchemy.text("SELECT * FROM carts"))
-
-    # # Filter by customer name
-    # if customer_name:
-    #     query = query.filter(Customer.name.ilike(f'%{customer_name}%'))
-
-    # # Filter by potion sku
-    # if potion_sku:
-    #     query = query.filter(Cart.potion_sku.ilike(f'%{potion_sku}%'))
-
-    # # Sorting
-    # if sort_order == search_sort_order.desc:
-    #     order_func = desc
-    # else:
-    #     order_func = asc
-
-    # if sort_col == search_sort_options.customer_name:
-    #     query = query.order_by(order_func(Customer.name))
-    # elif sort_col == search_sort_options.item_sku:
-    #     query = query.order_by(order_func(Cart.potion_sku))
-    # elif sort_col == search_sort_options.line_item_total:
-    #     query = query.order_by(order_func(LineItem.total))
-    # elif sort_col == search_sort_options.timestamp:
-    #     query = query.order_by(order_func(LineItem.timestamp))
-
-    # # Pagination
-    # if search_page:
-    #     query = query.filter(LineItem.timestamp > search_page)
-
-    # # Fetch results
-    # line_items = query.limit(5).all()
-
-    # # Construct response
-    # response = {
+    results = []
+    prev_results = []
+    next_results = []
+    full_result = []
+    with db.engine.begin() as connection:
+        if customer_name and potion_sku:
+            search_results = connection.execute(sqlalchemy.text("""
+                                                                SELECT cart_items.line_item_id, customers.created_at AS timestamp, cart_items.quantity
+                                                                FROM cart_items
+                                                                JOIN carts on cart_items.cart_id = carts.cart_id
+                                                                JOIN potions on potions.sku = cart_items.sku
+                                                                JOIN customers on customers.customer_id = carts.customer_id
+                                                                WHERE cart_items.sku = :sku AND customers.name = :name
+                                                                ORDER BY {} {}""".format(sort_col.value, sort_order.value)),
+                                                                [{"sku": potion_sku, "name": customer_name}])
+            if search_results:
+                for line_item_id, created_at, quantity in search_results:
+                    price = connection.execute(sqlalchemy.text("SELECT price FROM potions WHERE sku = :sku"),
+                                               [{"sku": potion_sku}]).scalar()
+                    total = price * quantity
+                    full_result.append({
+                        "line_item_id": line_item_id,
+                        "item_sku": potion_sku,
+                        "customer_name": customer_name,
+                        "line_item_total": total,
+                        "timestamp": created_at,
+                    })
+        elif customer_name:
+            search_results = connection.execute(sqlalchemy.text("""
+                                                                SELECT cart_items.line_item_id, customers.created_at AS timestamp, cart_items.sku, cart_items.quantity
+                                                                FROM cart_items
+                                                                JOIN carts on cart_items.cart_id = carts.cart_id
+                                                                JOIN potions on potions.sku = cart_items.sku
+                                                                JOIN customers on customers.customer_id = carts.customer_id
+                                                                WHERE customers.name = :name
+                                                                ORDER BY {} {}""".format(sort_col.value, sort_order.value)),
+                                                                [{"name": customer_name}])
+            if search_results:
+                for line_item_id, created_at, sku, quantity in search_results:
+                    price = connection.execute(sqlalchemy.text("SELECT price FROM potions WHERE sku = :sku"),
+                                               [{"sku": sku}]).scalar()
+                    total = price * quantity
+                    full_result.append({
+                        "line_item_id": line_item_id,
+                        "item_sku": sku,
+                        "customer_name": customer_name,
+                        "line_item_total": total,
+                        "timestamp": created_at,
+                    })
+        elif potion_sku:
+            search_results = connection.execute(sqlalchemy.text("""
+                                                                SELECT cart_items.line_item_id, customers.created_at AS timestamp, customers.name, cart_items.quantity
+                                                                FROM cart_items
+                                                                JOIN carts on cart_items.cart_id = carts.cart_id
+                                                                JOIN potions on potions.sku = cart_items.sku
+                                                                JOIN customers on customers.customer_id = carts.customer_id
+                                                                WHERE cart_items.sku = :sku
+                                                                ORDER BY {} {}""".format(sort_col.value, sort_order.value)),
+                                                                [{"sku": potion_sku}])
+            if search_results:
+                for line_item_id, created_at, name, quantity in search_results:
+                    price = connection.execute(sqlalchemy.text("SELECT price FROM potions WHERE sku = :sku"),
+                                               [{"sku": potion_sku}]).scalar()
+                    total = price * quantity
+                    full_result.append({
+                        "line_item_id": line_item_id,
+                        "item_sku": potion_sku,
+                        "customer_name": name,
+                        "line_item_total": total,
+                        "timestamp": created_at,
+                    })
+        else:
+            search_results = connection.execute(sqlalchemy.text("""
+                                                                SELECT cart_items.line_item_id, customers.created_at AS timestamp, customers.name, cart_items.sku, cart_items.quantity
+                                                                FROM cart_items
+                                                                JOIN carts on cart_items.cart_id = carts.cart_id
+                                                                JOIN potions on potions.sku = cart_items.sku
+                                                                JOIN customers on customers.customer_id = carts.customer_id
+                                                                ORDER BY {} {}""".format(sort_col.value, sort_order.value)))
+            if search_results:
+                for line_item_id, created_at, name, sku, quantity in search_results:
+                    price = connection.execute(sqlalchemy.text("SELECT price FROM potions WHERE sku = :sku"),
+                                               [{"sku": sku}]).scalar()
+                    total = price * quantity
+                    full_result.append({
+                        "line_item_id": line_item_id,
+                        "item_sku": sku,
+                        "customer_name": name,
+                        "line_item_total": total,
+                        "timestamp": created_at,
+                    })
+        if search_page == "":
+            search_page = 0
+        else:
+            search_page = int(search_page)
+        if search_page > 1:
+            prev_results = full_result[(((search_page - 1) * 5) - 5):(((search_page - 1) * 5) - 1)]
+            results = full_result[((search_page * 5) - 5):((search_page * 5) - 1)]
+            next_results = full_result[(((search_page + 1) * 5) - 5):(((search_page + 1) * 5) - 1)]
+    return {
+        "previous": prev_results,
+        "next": next_results,
+        "results": results
+    }
+    # return {
     #     "previous": "",
     #     "next": "",
     #     "results": [
     #         {
-    #             "line_item_id": line_item.id,
-    #             "item_sku": line_item.potion_sku,
-    #             "customer_name": line_item.cart.customer.name,
-    #             "line_item_total": line_item.total,
-    #             "timestamp": line_item.timestamp.isoformat(),
+    #             "line_item_id": 1,
+    #             "item_sku": "1 oblivion potion",
+    #             "customer_name": "Scaramouche",
+    #             "line_item_total": 50,
+    #             "timestamp": "2021-01-01T00:00:00Z",
     #         }
-    #         for line_item in line_items
     #     ],
     # }
-
-    # return response
-    return {
-        "previous": "",
-        "next": "",
-        "results": [
-            {
-                "line_item_id": 1,
-                "item_sku": "1 oblivion potion",
-                "customer_name": "Scaramouche",
-                "line_item_total": 50,
-                "timestamp": "2021-01-01T00:00:00Z",
-            }
-        ],
-    }
 
 
 class Customer(BaseModel):
