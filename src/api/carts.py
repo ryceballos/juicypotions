@@ -145,9 +145,9 @@ def search_orders(
                         "timestamp": created_at,
                     })
         if search_page == "":
-            search_page = 0
+            search_page = 2
         else:
-            search_page = int(search_page)
+            search_page = int(search_page) + 2
         if search_page > 1:
             prev_results = full_result[(((search_page - 1) * 5) - 5):(((search_page - 1) * 5) - 1)]
             results = full_result[((search_page * 5) - 5):((search_page * 5) - 1)]
