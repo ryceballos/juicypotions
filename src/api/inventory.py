@@ -30,6 +30,9 @@ def get_capacity_plan():
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
+    cap_plan = []
+    cap_potion = 0
+    cap_ml = 0
     with db.engine.begin() as connection:
         total_potions = connection.execute(sqlalchemy.text(
             "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%POTION'")).scalar()
@@ -37,10 +40,19 @@ def get_capacity_plan():
             "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku LIKE '%ML'")).scalar()
         curr_gold = connection.execute(sqlalchemy.text(
             "SELECT COALESCE(SUM(quantity), 0) FROM ledger WHERE sku = 'gold' ")).scalar()
+        caps = connection.execute(sqlalchemy.text(
+            "SELECT ml_cap, potion_cap FROM capacities")).one()
+        ml_cap = caps.ml_cap
+        potion_cap = caps.potion_cap
+        if (total_ml >= ml_cap * 0.75) and (curr_gold - 1000 >= 0):
+            cap_ml = 1
+            curr_gold -= 1000
+        if (total_potions >= potion_cap * 0.80) and (curr_gold - 1000 >= 0):
+            cap_potion = 1
 
     return {
-        "potion_capacity": 0,
-        "ml_capacity": 0
+        "potion_capacity": cap_potion,
+        "ml_capacity": cap_ml
         }
 
 class CapacityPurchase(BaseModel):
@@ -54,5 +66,11 @@ def deliver_capacity_plan(capacity_purchase : CapacityPurchase, order_id: int):
     Start with 1 capacity for 50 potions and 1 capacity for 10000 ml of potion. Each additional 
     capacity unit costs 1000 gold.
     """
-
+    with db.engine.begin() as connection:
+        connection.execute(sqlalchemy.text(
+            "UPDATE capacities SET potion_cap = capacities.potion_cap + :cap_potion, ml_cap = capacities.ml_cap + :cap_ml"),
+                           [{"cap_potion": capacity_purchase.potion_capacity * 50, "cap_ml": capacity_purchase.ml_capacity * 10000}])
+        connection.execute(sqlalchemy.text(
+            "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_spent)"),
+                [{"gold": 'gold', "gold_spent": (-1 * capacity_purchase.potion_capacity * 1000) + (capacity_purchase.ml_capacity * 1000 * -1)}])
     return "OK"
