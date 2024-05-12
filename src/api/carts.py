@@ -222,14 +222,20 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     total_gold_gained = 0
     total_potions_sold = 0
     with db.engine.begin() as connection:
-        items = connection.execute(sqlalchemy.text("SELECT cart_id AS items_cart_id, sku, quantity FROM cart_items"))
-        for items_cart_id, sku, quantity in items:
-            price = connection.execute(sqlalchemy.text("SELECT price FROM potions WHERE sku = :sku"),
-                                       [{"sku": sku}]).scalar()
-            if (items_cart_id == cart_id):
-                total_gold_gained += (quantity * 50)
-                total_potions_sold += quantity
-                connection.execute(sqlalchemy.text(
-                    "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_gained), (:sku, :quantity)"),
-                            [{"gold": 'gold', "gold_gained": quantity * price, "sku": sku, "quantity": -1 * quantity}])
+        checkedout = connection.execute(sqlalchemy.text("SELECT checkout FROM carts WHERE cart_id = :cart_id"),
+                                        [{"cart_id": cart_id}]).scalar()
+        if (checkedout == 0):
+            items = connection.execute(sqlalchemy.text("SELECT cart_id AS items_cart_id, sku, quantity FROM cart_items"))
+            for items_cart_id, sku, quantity in items:
+                price = connection.execute(sqlalchemy.text("SELECT price FROM potions WHERE sku = :sku"),
+                                        [{"sku": sku}]).scalar()
+                if (items_cart_id == cart_id):
+                    total_gold_gained += (quantity * 50)
+                    total_potions_sold += quantity
+                    connection.execute(sqlalchemy.text(
+                        "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_gained), (:sku, :quantity)"),
+                                [{"gold": 'gold', "gold_gained": quantity * price, "sku": sku, "quantity": -1 * quantity}])
+            connection.execute(sqlalchemy.text(
+                "UPDATE carts SET checkout = 1 WHERE carts.cart_id = :cart_id"),
+                               [{"cart_id": cart_id}])
     return {"total_potions_bought": total_potions_sold, "total_gold_paid": total_gold_gained}
