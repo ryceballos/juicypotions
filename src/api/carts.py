@@ -4,6 +4,7 @@ from src.api import auth
 from enum import Enum
 import sqlalchemy
 from src import database as db
+import time
 
 router = APIRouter(
     prefix="/carts",
@@ -219,6 +220,7 @@ class CartCheckout(BaseModel):
 def checkout(cart_id: int, cart_checkout: CartCheckout):
     """ """
     print(cart_checkout)
+    start_time = time.time()
     total_gold_gained = 0
     total_potions_sold = 0
     with db.engine.begin() as connection:
@@ -238,4 +240,7 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
                     connection.execute(sqlalchemy.text(
                         "UPDATE carts SET checkout = 1 WHERE carts.cart_id = :cart_id"),
                                     [{"cart_id": cart_id}])
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print("Elapsed Time:", elapsed_time, "seconds")
     return {"total_potions_bought": total_potions_sold, "total_gold_paid": total_gold_gained}
