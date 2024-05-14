@@ -224,22 +224,28 @@ def checkout(cart_id: int, cart_checkout: CartCheckout):
     total_gold_gained = 0
     total_potions_sold = 0
     with db.engine.begin() as connection:
-        checkedout = connection.execute(sqlalchemy.text("SELECT checkout FROM carts WHERE cart_id = :cart_id"),
-                                        [{"cart_id": cart_id}]).scalar()
-        items = connection.execute(sqlalchemy.text("SELECT cart_id AS items_cart_id, sku, quantity FROM cart_items"))
-        for items_cart_id, sku, quantity in items:
-            price = connection.execute(sqlalchemy.text("SELECT price FROM potions WHERE sku = :sku"),
-                                    [{"sku": sku}]).scalar()
-            if (items_cart_id == cart_id):
-                total_gold_gained += (quantity * 50)
-                total_potions_sold += quantity
-                if (checkedout == 0):
-                    connection.execute(sqlalchemy.text(
-                        "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_gained), (:sku, :quantity)"),
-                                [{"gold": 'gold', "gold_gained": quantity * price, "sku": sku, "quantity": -1 * quantity}])
-                    connection.execute(sqlalchemy.text(
-                        "UPDATE carts SET checkout = 1 WHERE carts.cart_id = :cart_id"),
-                                    [{"cart_id": cart_id}])
+        items = connection.execute(sqlalchemy.text("""
+                                                    SELECT
+                                                    cart_items.cart_id as items_cart_id,
+                                                    cart_items.sku,
+                                                    quantity,
+                                                    potions.price,
+                                                    carts.checkout
+                                                    FROM cart_items
+                                                    JOIN carts on carts.cart_id = cart_items.cart_id
+                                                    JOIN potions on cart_items.sku = potions.sku
+                                                    WHERE cart_items.cart_id = :cart_id """),
+                                                   [{"cart_id": cart_id}])
+        for items_cart_id, sku, quantity , price, checkout in items:
+            total_gold_gained += (quantity * 50)
+            total_potions_sold += quantity
+            if (checkout == 0):
+                connection.execute(sqlalchemy.text(
+                    "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_gained), (:sku, :quantity)"),
+                            [{"gold": 'gold', "gold_gained": quantity * price, "sku": sku, "quantity": -1 * quantity}])
+                connection.execute(sqlalchemy.text(
+                    "UPDATE carts SET checkout = 1 WHERE carts.cart_id = :cart_id"),
+                                [{"cart_id": cart_id}])
     end_time = time.time()
     elapsed_time = end_time - start_time
     print("Elapsed Time:", elapsed_time, "seconds")
