@@ -23,9 +23,8 @@ class Barrel(BaseModel):
 @router.post("/deliver/{order_id}")
 def post_deliver_barrels(barrels_delivered: list[Barrel], order_id: int):
     """Gold and ML"""
-
-    for barrel in barrels_delivered:
-        with db.engine.begin() as connection:
+    with db.engine.begin() as connection:
+        for barrel in barrels_delivered:
             connection.execute(sqlalchemy.text(
                 "INSERT INTO ledger (sku, quantity) VALUES (:gold, :gold_spent), (:red_ml, :red_quantity), (:green_ml, :green_quantity), (:blue_ml, :blue_quantity), (:dark_ml, :dark_quantity)"),
                         [{"gold": 'gold', "gold_spent": -1 * barrel.quantity * barrel.price, "red_ml": 'RED_ML', "red_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[0], "green_ml": 'GREEN_ML', "green_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[1], "blue_ml": 'BLUE_ML', "blue_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[2], "dark_ml": 'DARK_ML', "dark_quantity": barrel.quantity * barrel.ml_per_barrel * barrel.potion_type[3]}])
